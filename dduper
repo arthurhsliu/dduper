@@ -549,12 +549,13 @@ def populate_records(file_list):
         btrfs_dump_csum(fn)
         sqlite_mark_valid(fn)
 
-def dedupe_dir(dir_path, dry_run, recurse):
+def dedupe_dir(dir_path, dry_run, recurse, exclude_paths):
     logging.debug("Phase-1: Validating files and creating DB")
     file_list = []
     if recurse is True:
         for dirname in dir_path:
             for path, dirs, files in os.walk(dirname):
+                dirs[:] = [d for d in dirs if d not in exclude_paths]
                 for filename in files:
                     fn = os.path.join(path, filename)
                     if validate_file(fn) is True:
@@ -592,7 +593,7 @@ def main(results):
         dedupe_files(results.file_list, results.dry_run)
 
     if results.dir_path is not None:
-        dedupe_dir(results.dir_path, results.dry_run, results.recurse)
+        dedupe_dir(results.dir_path, results.dry_run, results.recurse, results.exclude_paths)
 
     sqlite_connection_close()
     return
@@ -661,6 +662,15 @@ if __name__ == '__main__':
                         action='version',
                         version='%(prog)s 0.04',
                         help="Show version info")
+
+    parser.add_argument('-x',
+                        '--exclude',
+                        action='store',
+                        dest='exclude_paths',
+                        nargs='+',
+                        type=str,
+                        help='Exclude given directory or directories',
+                        required=False)
 
     parser.add_argument('-m',
                         '--fast-mode',
